@@ -4,8 +4,8 @@ import mysql.connector
 
 def create_connection():
     try:
-       conn = mysql.connector.connect(host="localhost", user="root", password="root", database="expensedatabase")
-       return conn
+        conn = mysql.connector.connect(host="localhost", user="root", password="root", database="expensedatabase")
+        return conn
     except mysql.connector.Error as e:
         print(e)
         return None
@@ -43,7 +43,7 @@ def authenticate_user(conn, username, password):
         print(e)
         return False
 
-def expense_tracker(conn):
+def expense_tracker(conn, username):
     st.title("Expense Tracker")
 
     expense_name = st.text_input("Where did you spend?")
@@ -54,7 +54,6 @@ def expense_tracker(conn):
     selected_index = st.selectbox("Select the category", expense_categories)
 
     if st.button("Save Expense"):
-        username = st.query_params.get("username", ["username"])[""]
         new_expense = Expense(name=expense_name, category=selected_index, amount=expense_amount)
         save_expense(conn, new_expense, username)
 
@@ -92,8 +91,6 @@ def display_total_expense(conn, username):
         st.error("Error occurred while calculating total expense")
         print(e)
 
-def is_authenticated():
-    return st.session_state.get("logged_in", False)
 def main():
     conn = create_connection()
     create_table(conn)
@@ -106,8 +103,9 @@ def main():
         password = st.sidebar.text_input("Password", type="password")
         if st.sidebar.button("Login"):
             if authenticate_user(conn, username, password):
-                st.session_state.logged_in = True
-                st.session_state.username = username
+                expense_tracker(conn, username)
+                summarize_expenses_by_category(conn, username)
+                display_total_expense(conn, username)
             else:
                 st.error("Incorrect username or password. Please try again.")
 
@@ -122,12 +120,5 @@ def main():
             else:
                 st.error("Passwords do not match")
 
-    if st.session_state.get("logged_in", False):
-        expense_tracker(conn)
-        username = st.session_state.username
-        summarize_expenses_by_category(conn, username)
-        display_total_expense(conn, username)
-
 if __name__ == '__main__':
     main()
-
