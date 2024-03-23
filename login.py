@@ -9,7 +9,7 @@ def create_connection():
     except mysql.connector.Error as e:
         print(e)
         return None
-    
+
 def create_table(conn):
     try:
         c = conn.cursor()
@@ -35,28 +35,28 @@ def authenticate_user(conn, username, password):
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
         result = c.fetchone()
-        if result:  
+        if result:
             return True
         else:
             return False
     except mysql.connector.Error as e:
         print(e)
-        return False  
+        return False
 
 def expense_tracker(conn):
     st.title("Expense Tracker")
 
     expense_name = st.text_input("Where did you spend?")
-    
+
     expense_amount = st.number_input("Enter total amount")
 
     expense_categories = ["Food 🍕", "Home 🏠", "Work 💼", "Fun 🎉", "Misc ✨"]
     selected_index = st.selectbox("Select the category", expense_categories)
 
     if st.button("Save Expense"):
-        username = st.experimental_get_query_params().get("username", [""])[0]   
+        username = st.query_params.get("username", ["username"])[""]
         new_expense = Expense(name=expense_name, category=selected_index, amount=expense_amount)
-        save_expense(conn, new_expense, username) 
+        save_expense(conn, new_expense, username)
 
 def save_expense(conn, expense, username):
     try:
@@ -92,27 +92,24 @@ def display_total_expense(conn, username):
         st.error("Error occurred while calculating total expense")
         print(e)
 
+def is_authenticated():
+    return st.session_state.get("logged_in", False)
 def main():
     conn = create_connection()
     create_table(conn)
 
-
-    
     menu = ["Login", "Signup"]
     choice = st.sidebar.selectbox("Menu", menu)
 
     if choice == "Login":
-        
         username = st.sidebar.text_input("Username")
         password = st.sidebar.text_input("Password", type="password")
         if st.sidebar.button("Login"):
             if authenticate_user(conn, username, password):
-                st.experimental_set_query_params(logged_in=True, username=username) 
-               
+                st.session_state.logged_in = True
+                st.session_state.username = username
             else:
                 st.error("Incorrect username or password. Please try again.")
-
-        
 
     elif choice == "Signup":
         st.subheader("Create New Account")
@@ -124,13 +121,13 @@ def main():
                 insert_user(conn, new_username, new_password)
             else:
                 st.error("Passwords do not match")
-                
-    if st.experimental_get_query_params().get("logged_in"): 
-                    expense_tracker(conn)  
-                    username = st.experimental_get_query_params().get("username", [""])[0]   
-                    summarize_expenses_by_category(conn, username) 
-                    display_total_expense(conn, username) 
-   
+
+    if st.session_state.get("logged_in", False):
+        expense_tracker(conn)
+        username = st.session_state.username
+        summarize_expenses_by_category(conn, username)
+        display_total_expense(conn, username)
 
 if __name__ == '__main__':
     main()
+
